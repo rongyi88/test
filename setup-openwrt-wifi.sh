@@ -6,7 +6,7 @@ set -eu
 #   sh setup-openwrt-wifi.sh
 
 SSID="OpenWrt-Pi4"
-PASSWORD="test234"
+PASSWORD="test2345"
 COUNTRY="US"
 RADIO="radio0"
 NETWORK="lan"
@@ -22,7 +22,7 @@ if ! command -v uci >/dev/null 2>&1; then
 fi
 
 if [ "${#PASSWORD}" -lt 8 ]; then
-  echo "WiFi password must be at least 8 characters."
+  echo "WiFi password must be at least 8 characters. Current length: ${#PASSWORD}"
   exit 1
 fi
 

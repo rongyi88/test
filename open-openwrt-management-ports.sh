@@ -6,6 +6,7 @@ set -eu
 #   sh open-openwrt-management-ports.sh
 
 RULE_NAME="Allow-Manage-from-WAN"
+PING_RULE_NAME="Allow-Ping-from-WAN"
 WWAN_NETWORK="wwan"
 WAN_ZONE="wan"
 
@@ -49,6 +50,8 @@ find_zone_section_by_name() {
 
 echo "Cleaning old rule: $RULE_NAME"
 delete_rule_by_name "$RULE_NAME"
+echo "Cleaning old rule: $PING_RULE_NAME"
+delete_rule_by_name "$PING_RULE_NAME"
 
 WAN_SECTION="$(find_zone_section_by_name "$WAN_ZONE" || true)"
 if [ -z "$WAN_SECTION" ]; then
@@ -68,6 +71,15 @@ uci set firewall.@rule[-1].src="$WAN_ZONE"
 uci set firewall.@rule[-1].family='ipv4'
 uci set firewall.@rule[-1].proto='tcp'
 uci set firewall.@rule[-1].dest_port='22 80 443'
+uci set firewall.@rule[-1].target='ACCEPT'
+
+echo "Allowing IPv4 ping from zone '$WAN_ZONE' to this router"
+uci add firewall rule >/dev/null
+uci set firewall.@rule[-1].name="$PING_RULE_NAME"
+uci set firewall.@rule[-1].src="$WAN_ZONE"
+uci set firewall.@rule[-1].family='ipv4'
+uci set firewall.@rule[-1].proto='icmp'
+uci set firewall.@rule[-1].icmp_type='echo-request'
 uci set firewall.@rule[-1].target='ACCEPT'
 
 uci commit firewall
