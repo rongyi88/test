@@ -10,6 +10,8 @@ PASSWORD="test2345"
 COUNTRY="US"
 RADIO="radio0"
 NETWORK="lan"
+LAN_IP="192.168.8.1"
+LAN_NETMASK="255.255.255.0"
 
 if [ "$(id -u)" != "0" ]; then
   echo "Please run as root: sh $0"
@@ -53,12 +55,34 @@ fi
 
 echo "Configuring $RADIO as AP '$SSID' on network '$NETWORK'..."
 
+echo "Configuring LAN address $LAN_IP/24 and DHCP server..."
+uci set network.lan='interface'
+uci set network.lan.proto='static'
+uci set network.lan.ipaddr="$LAN_IP"
+uci set network.lan.netmask="$LAN_NETMASK"
+uci set network.lan.device='br-lan'
+
+uci -q get network.br_lan >/dev/null || uci set network.br_lan='device'
+uci set network.br_lan.name='br-lan'
+uci set network.br_lan.type='bridge'
+
+uci set dhcp.lan='dhcp'
+uci set dhcp.lan.interface='lan'
+uci set dhcp.lan.start='100'
+uci set dhcp.lan.limit='150'
+uci set dhcp.lan.leasetime='12h'
+uci set dhcp.lan.ignore='0'
+
+uci commit network
+uci commit dhcp
+
 uci set wireless."$RADIO".disabled='0'
 uci set wireless."$RADIO".country="$COUNTRY"
 
-# On Raspberry Pi 4, the onboard radio can be 2.4 GHz or 5 GHz depending on
-# driver/regulatory support. Channel auto is the safest portable default.
-uci set wireless."$RADIO".channel='auto'
+# 2.4 GHz channel 6 / HT20 is the most compatible AP setting for first boot.
+uci set wireless."$RADIO".band='2g'
+uci set wireless."$RADIO".channel='6'
+uci set wireless."$RADIO".htmode='HT20'
 
 uci set wireless."$AP_SECTION".device="$RADIO"
 uci set wireless."$AP_SECTION".mode='ap'
@@ -70,9 +94,14 @@ uci set wireless."$AP_SECTION".disabled='0'
 
 uci commit wireless
 
+/etc/init.d/network restart
+/etc/init.d/dnsmasq restart
 wifi reload || wifi
 
 echo "Done."
 echo "SSID: $SSID"
+echo "Password: $PASSWORD"
 echo "Radio: $RADIO"
 echo "Network: $NETWORK"
+echo "Router IP: $LAN_IP"
+echo "After connecting to WiFi, ping: $LAN_IP"
